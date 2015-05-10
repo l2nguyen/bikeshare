@@ -26,5 +26,12 @@ day.head(10)
 
 day.describe()
 
-plt.hist(day.registered, bins=100, color='#cccccc')
-plt.xlabel("Registered")
+plt.hist(day.cnt, bins=100, color='#cccccc')
+plt.xlabel("Total count of users")
+
+# Overlay the histogram of casual users and registered users on the same graph
+# casual user = blue; registered user = red, 50% transparency 
+plt.hist(day.casual, bins=50, normed=True, color="#6495ED", alpha=.5) 
+plt.hist(day.registered, bins=50, normed=True, color="#F08080", alpha=.5);
+#--> More registered users use the bike than casual users
+

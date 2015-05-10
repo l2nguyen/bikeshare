@@ -66,28 +66,48 @@ def ts_transform(df, ts_var):
     df['Hour'] = df.index.hour
     # Day of week
     df['Weekday'] = df.index.weekday
-    # Drop time stamp index
+    # Reset index
+    df.reset_index(inplace=True)
 
 # Format date of train dataset
 ts_transform(train,'datetime')
-# Drop time stamp variable from train dataset
-train.reset_index(drop=True, inplace=True)
-
+train.head()
 # Format date of test dataset
 ts_transform(test,'datetime')
-test.reset_index(inplace=True)
+test.head()
 
-# Make dummies
-def dummify(df):
-    df = pd.concat([df, pd.get_dummies(df['Month'], prefix='Month')], axis=1)
-    df = pd.concat([df, pd.get_dummies(df['Weekday'])], axis=1)
+# Average weekly temperature
+for num in [1,2,6]:
+    train[str('atemp'+'_time_'+str(num))] = pd.stats.moments.rolling_mean(train['atemp'],window=num,min_periods=1)
+    test[str('atemp'+'_time_'+str(num))] = pd.stats.moments.rolling_mean(test['atemp'],window=num,min_periods=1)
+
+#--------------------#
+# DATA VISUALIZATION #
+#--------------------#
+
+# NOTE: Kaggle has a much nicer visualization of this at
+# https://www.kaggle.com/users/993/ben-hamner/bike-sharing-demand/bike-rentals-by-time#script-save-run
+train.groupby('Hour').casual.mean().plot(kind='bar',color='b')
+plt.xlabel('Hour of the day')
+plt.ylabel('Average number of casual riders')
+plt.title('Average number of casual riders by hour')
+plt.show()
+
+train.groupby('Hour').registered.mean().plot(kind='bar',color='r')
+plt.xlabel('Hour of the day')
+plt.ylabel('Average number of registered riders')
+plt.title('Average number of registered riders by hour')
+plt.show()
+
+#-- Graph shows continuous price increase since 1993, a short slight dip around 2009,
+#-- Gas prices have been going down since Fall 2014
 
 #----------#
 # MODELING #
 #----------#
 
 cols = list(test.columns.values)
-remove = [0, 1, 3, 11]  # feats that proved to not be significant #
+remove = [0,1,2,11]  # feats that proved to not be significant
 feats = [i for j, i in enumerate(cols) if j not in remove]
 
 # Train trainsets
@@ -99,18 +119,18 @@ Yr_train = train['registered']
 X_test = test[feats]
 
 # RF Model for casual riders
-rfc = ensemble.RandomForestRegressor(n_estimators=100)
+rfc = ensemble.RandomForestRegressor(n_estimators=200)
 rfc.fit(X_train,Yc_train)
 
 # RF Model for registered riders
-rfr = ensemble.RandomForestRegressor(n_estimators=100,max_depth=17, max_features=7)
+rfr = ensemble.RandomForestRegressor(n_estimators=200)
 rfr.fit(X_train,Yr_train)
 
 # Look at R^2 values
 rfc.score(X_train,Yc_train)
 # 0.989
 rfr.score(X_train,Yr_train)
-# 0.9907
+# 0.993
 
 # Look at feature importance
 f_select = pd.DataFrame(data=rfc.feature_importances_, index=feats, columns=['Casual'])
@@ -119,18 +139,18 @@ f_select
 
 
 def cvrmse(X,Y,model):  # Function to get rmse for cross validation
-    scores = cross_val_score(model, X, Y, cv=10, scoring='mean_squared_error')
+    scores = cross_val_score(model, X, Y, cv=5, scoring='mean_squared_error')
     return np.mean(np.sqrt(-scores))
 
 # Look at RMSE for casual and registered rider models
 cvrmse(X_train, Yc_train, rfc)  # casual riders
-# 22.518
+# 22.049
 cvrmse(X_train, Yr_train, rfr)  # resgistered riders
-# 45.86
+# 42.43
 
 # Parameter tuning
 depth_range = range(1,20)
-maxfeats_range = range(1,10)
+maxfeats_range = range(1,13)
 param_grid = dict(max_depth=depth_range, max_features=maxfeats_range)
 # Casual riders
 grid_cas = GridSearchCV(rfc, param_grid, cv=10, scoring='mean_squared_error')
@@ -149,4 +169,4 @@ test['casual'] = np.round(rfc.predict(X_test))  # Casual riders
 test['registered'] = np.round(rfr.predict(X_test))  # Registered riders
 test['count'] = test['casual'] + test['registered']
 
-submission = test.to_csv('submission2.csv', columns=['datetime','count'], index=False)
+submission = test.to_csv('submission3.csv', columns=['datetime','count'], index=False)

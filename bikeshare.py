@@ -119,11 +119,11 @@ Yr_train = train['registered']
 X_test = test[feats]
 
 # RF Model for casual riders
-rfc = ensemble.RandomForestRegressor(n_estimators=200)
+rfc = ensemble.RandomForestRegressor(n_estimators=100)
 rfc.fit(X_train,Yc_train)
 
 # RF Model for registered riders
-rfr = ensemble.RandomForestRegressor(n_estimators=200)
+rfr = ensemble.RandomForestRegressor(n_estimators=100)
 rfr.fit(X_train,Yr_train)
 
 # Look at R^2 values
@@ -169,4 +169,4 @@ test['casual'] = np.round(rfc.predict(X_test))  # Casual riders
 test['registered'] = np.round(rfr.predict(X_test))  # Registered riders
 test['count'] = test['casual'] + test['registered']
 
-submission = test.to_csv('submission3.csv', columns=['datetime','count'], index=False)
+submission = test.to_csv('submission5.csv', columns=['datetime','count'], index=False)
